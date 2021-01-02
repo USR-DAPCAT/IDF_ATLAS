@@ -1,10 +1,7 @@
 ---
 author: "Rai Puig & Jordi Real"
 website: "https://github.com/USR-DAPCAT/"
-
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-
-
 output:
   html_document:
     df_print: paged
@@ -12,12 +9,10 @@ output:
     toc_float: true
     fig_caption: true
     css: logos_css/usr_styles.css
-  pdf_document: default
   word_document: default
-
+  pdf_document: default
 params:
   dir_dades: "dades" 
-  year: "2012"
 
 title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018 \n Year: `r params$year`"
 ---
@@ -39,7 +34,7 @@ title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018 \n Year: `r 
 
 
 
-# 0. Estado:
+# Objetivo
 
 
 &check; Estimacion de frecuencia, y prevalencia de Diabetes Mellitus por grupo de edad , sexo y ruralidad <br/>
@@ -57,7 +52,6 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, include=F,size
 library("dplyr")
 library("lubridate")
 library("purrr")
-library("kableExtra")
 
 
 # Funcions 
@@ -72,19 +66,14 @@ directori_dades<-params$dir_dades
 ```
 
 
-```{r lectura, include = FALSE}
+```{r lectura, include = FALSE, echo=FALSE}
 dades<- readRDS(here::here(directori_dades,"dt_PREVAL.Rds"))
 ```
 
 
-```{r Filtre1, include = FALSE}
-# Filtro per ANY INDEX 
-dades <- dades %>% filter(stringr::str_sub(dtindex,1,4)== params$year)
+```{r preparacio, echo=F}
 
-```
-
-
-```{r preparacio}
+dades<-dades %>% mutate(year=stringr::str_sub(dtindex,1,4))
 
 dades <- dades %>% mutate(edat=as.numeric((ymd(dtindex)-ymd(dnaix))/365.25))
 #-----------------------------------------------------------------------------------------#
@@ -117,157 +106,22 @@ dades<-dades %>% mutate(ruralitat=if_else(ruralitat=="","ND",ruralitat))
 dades<-dades %>% etiquetar_valors(variables_factors = conductor,fulla = "etiquetes")
 
 
-```
-
-```{r filtre2}
-
-dades <- dades %>% filter(edat>=20)
-
 
 ```
 
+```{r save}
 
-```{r funcio_resum, results="asis"}
-resum_per_edat<-function(diagnostic="DG.DM",dt=dades) { 
+dt_colapsat<-
+   dades %>% group_by(year,edat.cat2,sexe,ruralitat) %>% 
+   summarise(N=n(), DG.DM=sum(DG.DM), DG.DM2=sum(DG.DM2),DG.DMG=sum(DG.DMG)) %>% 
+   ungroup()
 
-# diagnostic="DG.DM"
-# dt=dades
-  
-  diagnostic=dplyr::sym(diagnostic)
-  
-  dt1 <- dt %>% summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(grup="Overall")
-  
-  dt2 <-dt %>% group_by(edat.cat2) %>%  
-    summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(grup="Age_grup") %>% rename(category="edat.cat2") %>% 
-    ungroup()
-    
-  
-  dt3 <-dt %>% group_by(sexe) %>% 
-    summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(grup="Sex") %>% rename(category="sexe") %>% 
-    ungroup()
-  
-  dt4 <-dt %>% group_by(ruralitat)  %>% 
-    summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(grup="ruralitat") %>% rename(category="ruralitat") %>% 
-    ungroup()
-  
-  dt <- dt1 %>% bind_rows(dt2) %>% bind_rows(dt3) %>% bind_rows(dt4)
-  
-  rm(list=c("dt1","dt2","dt3","dt4"))
-  gc() %>% invisible()
-  
-  dt %>% transmute(Year=params$year,grup,category,Population=N,n=N_DM,'Prevalence(%)'=prevalence) 
+saveRDS(dt_colapsat,here::here(params$dir_dades,"fitxer_colapsat.Rds"))
+saveRDS(dades,here::here(params$dir_dades,"dades.Rds"))
 
-
-
-}
-
-
-resum_per_edatsexe<-function(diagnostic="DG.DM",dt=dades) {
-
-# diagnostic="DG.DM"
-# dt=dades
-  
-  diagnostic=dplyr::sym(diagnostic)
-
-# Taula3 estratificada per edat i sexe
-  dt1 <- dt %>% group_by(sexe) %>% summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(edat.cat2="Overall")
-  dt2 <- dt %>% group_by(sexe,edat.cat2) %>% summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3))
- 
-  dt1 %>% bind_rows(dt2) %>% transmute(Year=params$year,grup=edat.cat2,Sex=sexe,Population=N,n=N_DM,'Prevalence(%)'=prevalence)
-
-
-}
-
-
-resum_per_edatsexeruralitat<-function(diagnostic="DG.DM",dt=dades) {
-# diagnostic="DG.DM"
-# dt=dades
-  diagnostic=dplyr::sym(diagnostic)
-
-  # Taula3 estratificada per edat i sexe
-  dt1 <- dt %>% group_by(sexe,ruralitat) %>% summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(edat.cat2="Overall")
-  dt2 <- dt %>% group_by(sexe,ruralitat,edat.cat2) %>% summarise(N=n(),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3))
- 
-  dt1 %>% bind_rows(dt2) %>% 
-    transmute(Year=params$year,grup=edat.cat2,Sex=sexe,ruralitat,Population=N,n=N_DM,'Prevalence(%)'=prevalence)
-
-}
-
-
-
-```
-
-## Prevalencia de Diabetes
-
-- 
-
-```{r analisis_DM, include=TRUE}
-
-resum_per_edat("DG.DM") %>% 
-  kable(digits = 2,caption = "Diabetes type 2 per age, sex and setting") %>%
-  kableExtra::kable_styling()
-
-resum_per_edatsexe("DG.DM") %>%
-    kable(digits = 2,caption = "Diabetes type 2 per age, stratifie sex") %>%
-    kableExtra::kable_styling()
-
-
-# resum_per_edatsexeruralitat("DG.DM") %>%
-#   kable(digits = 2,caption = "Diabetes type 2 per age, stratifie sex-rurality") %>%
-#   kableExtra::kable_styling()
-
-
-gc() %>% invisible()
-
-```
-
-## Prevalencia de Diabetes tipo 2
-
-```{r analisis_DM2,include=TRUE}
-
-gc()
-
-# resum_per_edat("DG.DM2") %>% 
-#   kable(digits = 2,caption = "Diabetes type 2 per age, sex and setting") %>%
-#   kableExtra::kable_styling()
 # 
-# resum_per_edatsexe("DG.DM2") %>%
-#     kable(digits = 2,caption = "Diabetes type 2 per age, stratifie sex") %>%
-#     kableExtra::kable_styling()
-#  
-#  
-# resum_per_edatsexeruralitat("DG.DM2") %>%
-#   kable(digits = 2,caption = "Diabetes type 2 per age, stratifie sex-rurality") %>%
-#   kableExtra::kable_styling()
-
-
-gc() %>% invisible()
+# dt_colapsat<-readRDS("fitxer_colapsat.Rds")
 
 ```
-
-## Prevalencia de Diabetes gestacional
-
-```{r analisis_DMG,include=TRUE}
-
-gc()
-
-# dt_temp<-dades %>% filter(sexe=="Female")
-# 
-# resum_per_edat("DG.DMG",dt_temp) %>% 
-#   kable(digits = 2,caption = "DGM per age, sex and setting") %>%
-#   kableExtra::kable_styling()
-
-
-
-```
-
-
-
 
 

@@ -1,0 +1,220 @@
+---
+title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018:  `r params$year`"
+author: "Rai Puig & Jordi Real"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: 
+    toc: true
+    toc_float: true
+    fig_caption: true
+    css: logos_css/usr_styles.css
+  pdf_document: default
+params:
+  dir_dades: dades
+  year: '2012'
+website: https://github.com/USR-DAPCAT/
+---
+
+&nbsp;
+<script>
+   $(document).ready(function() {
+     $head = $('#header');
+     $head.prepend('<img src=\"https://www.idiapjgol.org/images/logo.png\" style=\"float: right ;width: 130px;\"/>')
+     $head.prepend('<img src=\"https://avatars2.githubusercontent.com/u/57066591?s=200&v=4\" style=\"margin-left:25% ;width: 80px;\"/>')
+     $head.prepend('<img src=\"logos_css/logoDAP_Cat.png\" style=\"float: left:1;width: 185px;\"/>')
+   });
+</script>
+
+
+<div class="watermark">DRAFT</div>
+
+****
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, include=T,size="huge")
+
+library(dplyr)
+# library("kableExtra")
+
+```
+
+
+## Objetivos
+
+- Determinación de frecuencia, y prevalencia de Diabetes Mellitus (General, tipo II y gestacional) anualmente <br/>
+- Prevalencia de diabetis por grupos de edad, sexo y ruralidad por subgrupos<br/>
+
+## Método
+
+Descriptiva de frecuencias de casos diagnosticados y registrados en SIDIAP (E-cap). La prevalencia se como la proporción de individuos que presentan antecedentes de diabetis, entre la población activa a fecha de 30 de junio de cada año. 
+
+
+```{r llegir_dades, include=FALSE}
+# saveRDS(dt_colapsat,"fitxer_colapsat.Rds")
+ 
+dt_colapsat<-readRDS(here::here(params$dir_dades,"fitxer_colapsat.Rds"))
+
+# Filtre 
+dt_colapsat<-dt_colapsat %>% filter(year==params$year)
+
+# Llegeixo CATALEG
+dt_cataleg<-readxl::read_excel(here::here("cataleg_PrevalDH.xlsx")) %>% filter(!is.na(AGR) | !is.na(DM))
+
+```
+
+Notar que sólo se consideran casos diagnosticados y registrados en Atención primaria a través de E-Cap.  
+
+A continuación se presentan los códigos considerados para la classificación de diabetis.
+
+```{r codis_diabetes, include=T}
+
+dt_cataleg %>% filter(DM=="DM") %>% select(cod,desc) %>% knitr::kable(caption="ICD10 Diabetes")
+dt_cataleg %>% filter(AGR=="DM2") %>% select(cod,desc) %>% knitr::kable(caption="ICD10 Diabetes type 2")
+dt_cataleg %>% filter(AGR=="DMG") %>% select(cod,desc) %>% knitr::kable(caption="ICD10 Gestatioal diabetes")
+
+
+```
+
+```{r funcions_resum, include=FALSE}
+resum_per_grups<-function(diagnostic="DG.DM",dt=dt_colapsat) { 
+
+# diagnostic="DG.DM"
+# dt=dt_colapsat
+
+  diagnostic=dplyr::sym(diagnostic)
+  
+  dt1 <- dt %>% summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    mutate(grup="Overall",category="")
+  
+  dt2 <-dt %>% group_by(edat.cat2) %>%  
+    summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    mutate(grup="Age_grup") %>% rename(category="edat.cat2") %>% 
+    ungroup()
+    
+  
+  dt3 <-dt %>% group_by(sexe) %>% 
+    summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    mutate(grup="Sex") %>% rename(category="sexe") %>% 
+    ungroup()
+  
+  dt4 <-dt %>% group_by(ruralitat)  %>% 
+    summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    mutate(grup="ruralitat") %>% rename(category="ruralitat") %>% 
+    ungroup()
+  
+  dt <- dt1 %>% bind_rows(dt2) %>% bind_rows(dt3) %>% bind_rows(dt4)
+  
+  rm(list=c("dt1","dt2","dt3","dt4"))
+  gc() %>% invisible()
+  
+  dt %>% transmute(Year=params$year,Group=grup,category,Population=N,n=N_DM,'Prevalence(%)'=prevalence) 
+
+
+
+}
+
+
+resum_per_edatsexe<-function(diagnostic="DG.DM",dt=dt_colapsat) {
+
+# diagnostic="DG.DM"
+# dt=dades
+  
+  diagnostic=dplyr::sym(diagnostic)
+
+# Taula3 estratificada per edat i sexe
+  dt1 <- dt %>% group_by(sexe) %>% summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    mutate(edat.cat2="Overall")
+  dt2 <- dt %>% group_by(sexe,edat.cat2) %>% summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    ungroup()
+ 
+  dt1 %>% bind_rows(dt2) %>% transmute(Year=params$year,Group=edat.cat2,Sex=sexe,Population=N,n=N_DM,'Prevalence(%)'=prevalence)
+
+
+}
+
+
+resum_per_edatsexeruralitat<-function(diagnostic="DG.DM",dt=dt_colapsat) {
+# diagnostic="DG.DM"
+# dt=dades
+  diagnostic=dplyr::sym(diagnostic)
+
+  # Taula3 estratificada per edat i sexe
+  dt1 <- dt %>% group_by(sexe,ruralitat) %>% summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    mutate(edat.cat2="Overall") %>% 
+    ungroup()
+    
+  dt2 <- dt %>% group_by(sexe,ruralitat,edat.cat2) %>% 
+    summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+    ungroup()
+    
+ 
+  dt1 %>% bind_rows(dt2) %>% 
+    transmute(Year=params$year,Group=edat.cat2,Sex=sexe,Setting=ruralitat,Population=N,n=N_DM,'Prevalence(%)'=prevalence)
+
+}
+
+
+
+```
+
+# Results 
+
+## Diabetes (Type 1 + Type 2)
+
+
+```{r analisis_DM}
+
+resum_per_grups("DG.DM") %>% 
+   knitr::kable(digits = 2,caption = "Diabetes per age, sex and setting") 
+
+resum_per_edatsexe("DG.DM") %>%
+     knitr::kable(digits = 2,caption = "Diabetes by age and sex") 
+
+resum_per_edatsexeruralitat("DG.DM") %>%
+   knitr::kable(digits = 2,caption = "Diabetes by age, sex and setting") 
+
+gc() %>% invisible()
+
+
+
+```
+
+## Diabetes type 2
+
+```{r analisis_DM2}
+
+
+
+resum_per_grups("DG.DM2") %>%
+   knitr::kable(digits = 2,caption = "Diabetes type 2 per age, sex and setting") 
+
+resum_per_edatsexe("DG.DM2") %>%
+   knitr::kable(digits = 2,caption = "Diabetes type 2 by age and sex") 
+
+resum_per_edatsexeruralitat("DG.DM2") %>% 
+   knitr::kable(digits = 2,caption = "Diabetes type 2 by age, sex and setting") 
+
+
+
+```
+
+
+## Gestational diabetes
+
+```{r analisis_DMG}
+
+dt_temp<-dt_colapsat %>% filter(sexe=="Female")
+
+resum_per_grups("DG.DMG",dt_temp) %>%
+   knitr::kable(digits = 2,caption = "Gestational diabetes per age, sex and setting")
+
+
+
+```
+
+
+&nbsp;
+<hr />
+<p style="text-align: center;">A work by $Jordi Real$ $Rai Puig$ </a></p>
+<p style="text-align: center;">$Llepali System$ </a></p>
+<p style="text-align: center;"><span style="color: #808080;"><em><https://github.com/USR-DAPCAT/></em></span></p>
