@@ -46,7 +46,7 @@ library(dplyr)
 
 ## Método
 
-Descriptiva de frecuencias de casos diagnosticados y registrados en SIDIAP (E-cap). La prevalencia se como la proporción de individuos que presentan antecedentes de diabetis, entre la población activa a fecha de 30 de junio de cada año. 
+Descriptiva de frecuencias de casos diagnosticados y registrados en SIDIAP (E-cap). La prevalencia se ha calculado mediante la proporción de individuos que presentan antecedentes de diabetis, entre la población activa a fecha de 30 de junio de cada año. 
 
 
 ```{r llegir_dades, include=FALSE}
