@@ -10,7 +10,7 @@ output:
     css: logos_css/usr_styles.css
   pdf_document: default
 params:
-  dir_dades: dades
+  dir_dades: "dades/test" # "dades/sidiap"
   year: '2012'
 website: https://github.com/USR-DAPCAT/
 ---
@@ -41,8 +41,8 @@ library(dplyr)
 
 ## Objetivos
 
-- Determinación de frecuencia, y prevalencia de Diabetes Mellitus (General, tipo II y gestacional) anualmente <br/>
-- Prevalencia de diabetis por grupos de edad, sexo y ruralidad por subgrupos<br/>
+- Determinar la frecuencia, y prevalencia de Diabetes Mellitus (General, tipo II y gestacional) anualmente <br/>
+- Determinar la prevalencia de diabetis por grupos de edad, sexo y ruralidad por subgrupos<br/>
 
 ## Método
 
@@ -53,6 +53,7 @@ Descriptiva de frecuencias de casos diagnosticados y registrados en SIDIAP (E-ca
 # saveRDS(dt_colapsat,"fitxer_colapsat.Rds")
  
 dt_colapsat<-readRDS(here::here(params$dir_dades,"fitxer_colapsat.Rds"))
+
 
 # Filtre 
 # dt_colapsat<-dt_colapsat %>% filter(year==params$year)
@@ -74,6 +75,21 @@ dt_cataleg %>% filter(AGR=="DMG") %>% select(cod,desc) %>% knitr::kable(caption=
 
 
 ```
+
+
+
+```{r rangs_edat, include=TRUE, results="asis"}
+
+cat("## pepepepepepepe")
+
+dt_colapsat %>% group_by(year) %>% summarise("Age (min)"=min(min_edat), "Age (max)"= max(max_edat)) %>% 
+  knitr::kable(caption="Age range by annual crosssection")
+
+
+
+```
+
+
 
 ```{r funcions_resum, include=FALSE}
 resum_per_grups<-function(diagnostic="DG.DM",dt=dt_colapsat) { 
@@ -201,7 +217,7 @@ genera_output<-function(x="2010",dt=dt_colapsat) {
   cat("\n")
   cat("### Gestational diabetes \n")
 
-  dt_temp<-dt %>% filter(sexe=="Female")
+  dt_temp<-dt %>% filter(sexe=="Female" & edat.cat2<="[45-50)")
 
   resum_per_grups("DG.DMG",dt_temp) %>%
     knitr::kable(digits = 2,caption = "Gestational diabetes per age, sex and setting") %>% 
@@ -220,6 +236,8 @@ genera_output<-function(x="2010",dt=dt_colapsat) {
 # genera_output("2014",dt_colapsat) %>% invisible()
 
 rep("2010":"2018") %>% purrr::map(~genera_output(.x,dt_colapsat)) %>% invisible()
+
+
 
 ```
 
@@ -270,13 +288,12 @@ resum_per_edatsexeruralitat("DG.DM2") %>%
 
 ```{r analisis_DMG, eval=FALSE}
 
-## Gestational diabetes
+## Gestational diabetes Dones menors de 50 anys 
 
-dt_temp<-dt_colapsat %>% filter(sexe=="Female")
+dt_temp<-dt_colapsat %>% filter(sexe=="Female" & edat.cat2<="[45-50)")
 
 resum_per_grups("DG.DMG",dt_temp) %>%
    knitr::kable(digits = 2,caption = "Gestational diabetes per age, sex and setting")
-
 
 
 ```

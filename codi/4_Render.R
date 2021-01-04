@@ -5,7 +5,7 @@
 rm(list=ls())
 year<-"2018"
 rmarkdown::render(input="./codi/3_Preval_Analisis.Rmd",
-                  params = list(dir_dades="dades", year= year),
+                  params = list(dir_dades="dades/sidiap", year= year),
                   output_file=here::here("outputs",paste0("Informe",year)))
 
 
@@ -15,7 +15,7 @@ rmarkdown::render(input="./codi/3_Preval_Analisis.Rmd",
 for (i in 2010:2018) {
   year<-as.character(i)
   rmarkdown::render(input="./codi/3_Preval_Analisis.Rmd",
-                    params = list(dir_dades="dades", year= year),
+                    params = list(dir_dades="dades/sidiap", year= year),
                     output_file=here::here("outputs",paste0("Informe",year)))
   }
 
@@ -24,7 +24,7 @@ for (i in 2010:2018) {
 for (i in 2010:2018) {
   year<-as.character(i)
   rmarkdown::render(input="./codi/3_Preval_Analisis.Rmd",
-                    params = list(dir_dades="dades", year= year),
+                    params = list(dir_dades="dades/sidiap", year= year),
                     output_file=here::here("outputs",paste0("Informe",year)),
                     output_format = c("pdf_document"))
   }

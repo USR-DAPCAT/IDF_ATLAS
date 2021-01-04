@@ -17,7 +17,7 @@ output:
   word_document: default
 
 params:
-  dir_dades: "dades" 
+  dir_dades: "dades/sidiap" # "dades/test"
   
 ---
 
@@ -38,7 +38,6 @@ params:
 
 
 
-
 # FASE LECTURA
 
 >> Generacio de taula plana i aplicació de primers criteris d'inclusio 
@@ -55,11 +54,9 @@ link_source<-paste0("https://github.com/jrealgatius/Stat_codis/blob/master/funci
 devtools::source_url(link_source)
 
 
-
 dt_cataleg<-here::here("cataleg_PrevalDH.xlsx")
 directori_dades<-params$dir_dades
 
-directori_dades<-"dades/sidiap/test"
 
 # Llegeixo CATALEG
 dt_cataleg<-readxl::read_excel(dt_cataleg)
@@ -89,6 +86,8 @@ LLEGIR.diagnostics<-readRDS(directori_dades %>% here::here("DAPCRMM_entregable_d
 
 #v       
 LLEGIR.variables_socioeconomiques<-readRDS(directori_dades %>% here::here("DAPCRMM_entregable_variables_socioeconomiques_20190926_103409.rds")) %>% as_tibble()
+
+
 
 ```
 

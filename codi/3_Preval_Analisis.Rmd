@@ -10,7 +10,7 @@ output:
     css: logos_css/usr_styles.css
   pdf_document: default
 params:
-  dir_dades: dades
+  dir_dades: "dades/test" # "dades/test"
   year: '2012'
 website: https://github.com/USR-DAPCAT/
 ---

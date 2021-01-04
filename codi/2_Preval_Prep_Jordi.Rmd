@@ -12,7 +12,7 @@ output:
   word_document: default
   pdf_document: default
 params:
-  dir_dades: "dades" 
+  dir_dades: "dades/test" # "dades/sidiap" 
 
 title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018 \n Year: `r params$year`"
 ---
@@ -46,7 +46,6 @@ title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018 \n Year: `r 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, include=F,size="huge")
 
-
 ###########
 
 library("dplyr")
@@ -60,14 +59,14 @@ devtools::source_url(link_source)
 
 conductor<-here::here("conductor_PrevDH.xlsx")
 
-# directori_dades<-params$dir_dades
-directori_dades<-params$dir_dades
 
 ```
 
 
 ```{r lectura, include = FALSE, echo=FALSE}
-dades<- readRDS(here::here(directori_dades,"dt_PREVAL.Rds"))
+dades<- readRDS(here::here(params$dir_dades,"dt_PREVAL.Rds"))
+
+
 ```
 
 
@@ -106,21 +105,20 @@ dades<-dades %>% mutate(ruralitat=if_else(ruralitat=="","ND",ruralitat))
 dades<-dades %>% etiquetar_valors(variables_factors = conductor,fulla = "etiquetes")
 
 
-
 ```
 
 ```{r save}
 
 dt_colapsat<-
    dades %>% group_by(year,edat.cat2,sexe,ruralitat) %>% 
-   summarise(N=n(), DG.DM=sum(DG.DM), DG.DM2=sum(DG.DM2),DG.DMG=sum(DG.DMG)) %>% 
+   summarise(N=n(), DG.DM=sum(DG.DM), DG.DM2=sum(DG.DM2),DG.DMG=sum(DG.DMG), 
+             min_edat=min(edat),max_edat=max(edat)) %>% 
    ungroup()
+
 
 saveRDS(dt_colapsat,here::here(params$dir_dades,"fitxer_colapsat.Rds"))
 saveRDS(dades,here::here(params$dir_dades,"dades.Rds"))
 
-# 
-# dt_colapsat<-readRDS("fitxer_colapsat.Rds")
 
 ```
 
