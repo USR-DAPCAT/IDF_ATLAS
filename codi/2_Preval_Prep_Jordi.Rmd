@@ -79,30 +79,15 @@ dades <- dades %>% mutate(edat=as.numeric((ymd(dtindex)-ymd(dnaix))/365.25))
 dades<-dades %>% mutate_at(vars( starts_with("DG.") ), funs( if_else(.==0  | is.na(.)  ,0,1)))
 #-----------------------------------------------------------------------------------------#
 
+## Grups d'edat per cada 5 anys desde 20 fins major de 90
 
-
-dades<-dades%>%mutate(edat.cat2=case_when(     edat<20~"<20",
-                                                    edat>=20 & edat<25 ~ "[20-25)",  
-                                                    edat>=25 & edat<30 ~ "[25-30)",  
-                                                    edat>=30 & edat<35 ~ "[30-35)",  
-                                                    edat>=35 & edat<40 ~ "[35-40)",  
-                                                    edat>=40 & edat<45 ~ "[40-45)",  
-                                                    edat>=45 & edat<50 ~ "[45-50)",  
-                                                    edat>=50 & edat<55 ~ "[50-55)",  
-                                                    edat>=55 & edat<60 ~ "[55-60)",  
-                                                    edat>=60 & edat<65 ~ "[60-65)",  
-                                                    edat>=65 & edat<70 ~ "[65-70)",  
-                                                    edat>=70 & edat<75 ~ "[70-75)",  
-                                                    edat>=75 & edat<80 ~ "[75-80)",  
-                                                    edat>=80 & edat<85 ~ "[80-85)",  
-                                                    edat>=85 & edat<90 ~ "[85-90)",  
-                                                    edat>=90~ ">=90" ),
-                      edat=round(edat,1))
-
+dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F),
+                        edat=round(edat,1))
 
 dades<-dades %>% mutate(ruralitat=if_else(ruralitat=="","ND",ruralitat))
 
 dades<-dades %>% etiquetar_valors(variables_factors = conductor,fulla = "etiquetes")
+
 
 
 ```
