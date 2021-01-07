@@ -1,5 +1,5 @@
 ---
-title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018"
+title: "Prevalencia de la  diabetes mellitus en Catalunya 2006-2016 (DGM: 2010-2018)"
 author: "Rai Puig & Jordi Real"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -10,7 +10,7 @@ output:
     css: logos_css/usr_styles.css
   pdf_document: default
 params:
-  dir_dades: "dades/test" # "dades/sidiap"
+  dir_dades: "dades/sidiap" # "dades/test"
   year: '2012'
 website: https://github.com/USR-DAPCAT/
 ---
@@ -36,24 +36,33 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, include=T,size
 library(dplyr)
 # library("kableExtra")
 
+
 ```
 
 
 ## Objetivos
 
 - Determinar la frecuencia, y prevalencia de Diabetes Mellitus (General, tipo II y gestacional) anualmente <br/>
-- Determinar la prevalencia de diabetis por grupos de edad, sexo y ruralidad por subgrupos<br/>
+- Determinar la prevalencia de diabetis por grupos de edad, sexo estratificado por subgrupos<br/>
 
 ## Método
 
 Descriptiva de frecuencias de casos diagnosticados y registrados en SIDIAP (E-cap). La prevalencia se ha calculado mediante la proporción de individuos que presentan antecedentes de diabetis, entre la población activa a fecha de 30 de junio de cada año. 
 
+Fuente de datos: 
+
+- Notar que para el càlculo de la prevalencia de casos de DM (DM1+DM2) se han utilizado datos del proyecto GlobalDiab, datos solamente disponibles durante el periodo 2006-2016, donde no se dispone de la ruralidad. 
+
+- Las prevelaencias de diabetis gestacional se han utilizado los datos del proyecto DataHarmonization, datos disponibles durante el periodo 2010-2018. 
+
+
 
 ```{r llegir_dades, include=FALSE}
 # saveRDS(dt_colapsat,"fitxer_colapsat.Rds")
  
-dt_colapsat<-readRDS(here::here(params$dir_dades,"fitxer_colapsat.Rds"))
+dt_colapsatDH<-readRDS(here::here(params$dir_dades,"fitxer_colapsatDH.Rds"))
 
+dt_colapsatGD<-readRDS(here::here(params$dir_dades,"fitxer_colapsatGD.Rds"))
 
 # Filtre 
 # dt_colapsat<-dt_colapsat %>% filter(year==params$year)
@@ -78,7 +87,7 @@ dt_cataleg %>% filter(AGR=="DMG") %>% select(cod,desc) %>% knitr::kable(caption=
 
 
 
-```{r rangs_edat, include=TRUE, results="asis"}
+```{r rangs_edat, include=TRUE, results="asis", eval=FALSE}
 
 cat("## pepepepepepepe")
 
@@ -92,7 +101,7 @@ dt_colapsat %>% group_by(year) %>% summarise("Age (min)"=min(min_edat), "Age (ma
 
 
 ```{r funcions_resum, include=FALSE}
-resum_per_grups<-function(diagnostic="DG.DM",dt=dt_colapsat) { 
+resum_per_grups<-function(diagnostic="DG.DM",dt=dt_colapsatGD) { 
 
 # diagnostic="DG.DM"
 # dt=dt_colapsat
@@ -113,14 +122,14 @@ resum_per_grups<-function(diagnostic="DG.DM",dt=dt_colapsat) {
     mutate(grup="Sex") %>% rename(category="sexe") %>% 
     ungroup()
   
-  dt4 <-dt %>% group_by(ruralitat)  %>% 
-    summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
-    mutate(grup="ruralitat") %>% rename(category="ruralitat") %>% 
-    ungroup()
+  # dt4 <-dt %>% group_by(ruralitat)  %>% 
+  #   summarise(N=sum(N),N_DM=sum(!!diagnostic),prevalence=round((N_DM/N)*100,3)) %>% 
+  #   mutate(grup="ruralitat") %>% rename(category="ruralitat") %>% 
+  #   ungroup()
   
-  dt <- dt1 %>% bind_rows(dt2) %>% bind_rows(dt3) %>% bind_rows(dt4)
+  dt <- dt1 %>% bind_rows(dt2) %>% bind_rows(dt3) # %>% bind_rows(dt4)
   
-  rm(list=c("dt1","dt2","dt3","dt4"))
+  rm(list=c("dt1","dt2","dt3"))
   gc() %>% invisible()
   
   dt %>% transmute(Group=grup,category,Population=N,n=N_DM,'Prevalence(%)'=prevalence) 
@@ -128,7 +137,7 @@ resum_per_grups<-function(diagnostic="DG.DM",dt=dt_colapsat) {
 }
 
 
-resum_per_edatsexe<-function(diagnostic="DG.DM",dt=dt_colapsat) {
+resum_per_edatsexe<-function(diagnostic="DG.DM",dt=dt_colapsatGD) {
 
 # diagnostic="DG.DM"
 # dt=dades
@@ -176,12 +185,13 @@ resum_per_edatsexeruralitat<-function(diagnostic="DG.DM",dt=dt_colapsat) {
 
 ```{r funcio_sortida, message=FALSE, warning=FALSE, include=T, echo=FALSE,size="huge", results="asis"}
 
-genera_output<-function(x="2010",dt=dt_colapsat) {
+genera_output<-function(x="2010",dt=dt_colapsatGD,dtDMG=dt_colapsatDH) {
   
   # x="2010"
   # dt=dt_colapsat
   
   dt<-dt %>% filter(year==x)
+  dtDMG<-dtDMG %>% filter(year==x)
   
   cat("## ",x, "\n")
   
@@ -195,9 +205,9 @@ genera_output<-function(x="2010",dt=dt_colapsat) {
     knitr::kable(digits = 2,caption = "Diabetes by age and sex") %>% 
     print()
 
-  resum_per_edatsexeruralitat("DG.DM",dt) %>%
-   knitr::kable(digits = 2,caption = "Diabetes by age, sex and setting") %>% 
-   print()
+  # resum_per_edatsexeruralitat("DG.DM",dt) %>%
+  #  knitr::kable(digits = 2,caption = "Diabetes by age, sex and setting") %>% 
+  #  print()
   
   cat("\n")
   cat("### Diabetes type 2 \n")
@@ -210,14 +220,14 @@ genera_output<-function(x="2010",dt=dt_colapsat) {
     knitr::kable(digits = 2,caption = "Diabetes type 2 by age and sex") %>% 
     print() 
 
-  resum_per_edatsexeruralitat("DG.DM2",dt) %>% 
-    knitr::kable(digits = 2,caption = "Diabetes type 2 by age, sex and setting") %>% 
-    print()
+  # resum_per_edatsexeruralitat("DG.DM2",dt) %>% 
+  #   knitr::kable(digits = 2,caption = "Diabetes type 2 by age, sex and setting") %>% 
+  #   print()
 
   cat("\n")
   cat("### Gestational diabetes \n")
 
-  dt_temp<-dt %>% filter(sexe=="Female" & edat.cat2<="[45-50)")
+  dt_temp<-dtDMG %>% filter(sexe=="Female" & max_edat<50)
 
   resum_per_grups("DG.DMG",dt_temp) %>%
     knitr::kable(digits = 2,caption = "Gestational diabetes per age, sex and setting") %>% 
@@ -235,8 +245,7 @@ genera_output<-function(x="2010",dt=dt_colapsat) {
 
 # genera_output("2014",dt_colapsat) %>% invisible()
 
-rep("2010":"2018") %>% purrr::map(~genera_output(.x,dt_colapsat)) %>% invisible()
-
+rep("2006":"2018") %>% purrr::map(~genera_output(.x)) %>% invisible()
 
 
 ```

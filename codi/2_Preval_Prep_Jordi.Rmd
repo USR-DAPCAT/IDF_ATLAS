@@ -12,9 +12,9 @@ output:
   word_document: default
   pdf_document: default
 params:
-  dir_dades: "dades/test" # "dades/sidiap" 
+  dir_dades: "dades/sidiap" # "dades/test" 
 
-title: "Prevalencia de la  diabetes mellitus en Catalunya 2010-2018 \n Year: `r params$year`"
+title: "Prevalencia de la  diabetes mellitus en Catalunya 2006-2016 or 2018 \n Year: `r params$year`"
 ---
 
 &nbsp;
@@ -64,17 +64,53 @@ conductor<-here::here("conductor_PrevDH.xlsx")
 
 
 ```{r lectura, include = FALSE, echo=FALSE}
-dades<- readRDS(here::here(params$dir_dades,"dt_PREVAL.Rds"))
 
+dades1<- readRDS(here::here(params$dir_dades,"dt_PREVAL_DH.Rds"))
+dades2<- readRDS(here::here(params$dir_dades,"dt_PREVAL_GD.Rds"))
 
 ```
 
 
-```{r preparacio, echo=F}
+```{r preparacioDH, echo=F}
+
+dades<-dades1
 
 dades<-dades %>% mutate(year=stringr::str_sub(dtindex,1,4))
 
-dades <- dades %>% mutate(edat=as.numeric((ymd(dtindex)-ymd(dnaix))/365.25))
+dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),1))
+
+## Edat màxima 105 anys
+dades<-dades %>% filter(edat<=105)
+
+#-----------------------------------------------------------------------------------------#
+dades<-dades %>% mutate_at(vars( starts_with("DG.") ), funs( if_else(.==0  | is.na(.)  ,0,1)))
+#-----------------------------------------------------------------------------------------#
+
+## Grups d'edat per cada 5 anys desde 20 fins major de 90
+dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F),
+                        edat=round(edat,1))
+
+
+
+dades<-dades %>% mutate(ruralitat=if_else(ruralitat=="","ND",ruralitat))
+
+dades<-dades %>% etiquetar_valors(variables_factors = conductor,fulla = "etiquetes")
+
+dadesDH<-dades
+
+```
+
+```{r preparacio2, echo=F}
+
+dades<-dades2
+
+dades<-dades %>% mutate(year=stringr::str_sub(dtindex,1,4))
+
+dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),1))
+
+## Edat màxima (105 anys)
+dades<-dades %>% filter(edat<=105)
+
 #-----------------------------------------------------------------------------------------#
 dades<-dades %>% mutate_at(vars( starts_with("DG.") ), funs( if_else(.==0  | is.na(.)  ,0,1)))
 #-----------------------------------------------------------------------------------------#
@@ -84,25 +120,37 @@ dades<-dades %>% mutate_at(vars( starts_with("DG.") ), funs( if_else(.==0  | is.
 dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F),
                         edat=round(edat,1))
 
-dades<-dades %>% mutate(ruralitat=if_else(ruralitat=="","ND",ruralitat))
-
 dades<-dades %>% etiquetar_valors(variables_factors = conductor,fulla = "etiquetes")
 
+dadesGD<-dades
 
 
 ```
 
-```{r save}
 
-dt_colapsat<-
-   dades %>% group_by(year,edat.cat2,sexe,ruralitat) %>% 
+```{r saveDH}
+####   Salvar dades del DH
+dt_colapsatDH<-
+   dadesDH %>% group_by(year,edat.cat2,sexe,ruralitat) %>% 
    summarise(N=n(), DG.DM=sum(DG.DM), DG.DM2=sum(DG.DM2),DG.DMG=sum(DG.DMG), 
              min_edat=min(edat),max_edat=max(edat)) %>% 
    ungroup()
 
+saveRDS(dt_colapsatDH,here::here(params$dir_dades,"fitxer_colapsatDH.Rds"))
+saveRDS(dadesDH,here::here(params$dir_dades,"dadesDH.Rds"))
+```
 
-saveRDS(dt_colapsat,here::here(params$dir_dades,"fitxer_colapsat.Rds"))
-saveRDS(dades,here::here(params$dir_dades,"dades.Rds"))
+
+```{r saveGD}
+
+####  Salvar dades del global Diab
+dt_colapsatGD<-
+   dadesGD %>% group_by(year,edat.cat2,sexe) %>% 
+   summarise(N=n(), DG.DM=sum(DG.DM), DG.DM2=sum(DG.DM2),min_edat=min(edat),max_edat=max(edat)) %>% 
+   ungroup()
+
+saveRDS(dt_colapsatGD,here::here(params$dir_dades,"fitxer_colapsatGD.Rds"))
+saveRDS(dadesGD,here::here(params$dir_dades,"dadesGD.Rds"))
 
 
 ```

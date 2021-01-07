@@ -1,5 +1,5 @@
 ---
-title: "Prevalencia de la  diabetes mellitus [DM] en Catalunya [2010-2018]"
+title: "Prevalencia de la  diabetes mellitus [DM] en Catalunya [DM and DM2:2006-2016] [DM Gestacional: 2010-2018]"
 author: "Rai Puig & Jordi Real"
 website: "https://github.com/USR-DAPCAT/"
 
@@ -53,18 +53,13 @@ library("tidyr")
 link_source<-paste0("https://github.com/jrealgatius/Stat_codis/blob/master/funcions_propies.R","?raw=T")
 devtools::source_url(link_source)
 
-
-dt_cataleg<-here::here("cataleg_PrevalDH.xlsx")
 directori_dades<-params$dir_dades
 
-
 # Llegeixo CATALEG
-dt_cataleg<-readxl::read_excel(dt_cataleg)
-
+dt_cataleg<-readxl::read_excel(here::here("cataleg_PrevalDH.xlsx"),col_types = "text")
 
 # Llegeixo CONDUCTOR
 conductor<-"conductor_Prev_DataHarmonization.xlsx"
-
 
 
 #   template: template.html
@@ -74,12 +69,15 @@ conductor<-"conductor_Prev_DataHarmonization.xlsx"
 ## 1. Lectura 
 
 ```{r lectura, include=T}
+
+directori_dades<-params$dir_dades
+
 # 1 Lectura -----------
 #i        [poblacio] unic [min entrada 1.1.2006!!!]
 LLEGIR.poblacio<-readRDS(directori_dades %>% here::here("DAPCRMM_entregable_poblacio_20190926_103409.rds")) %>% as_tibble() 
 
 #ii       [diagnostics.hospital.cim9]  mult
-LLEGIR.cmbdh_diagnostics_padris<-readRDS(directori_dades%>% here::here("DAPCRMM_entregable_cmbdh_diagnostics_padris_20190930_093320.rds")) %>% as_tibble()
+# LLEGIR.cmbdh_diagnostics_padris<-readRDS(directori_dades%>% here::here("DAPCRMM_entregable_cmbdh_diagnostics_padris_20190930_093320.rds")) %>% as_tibble()
 
 #iii       [diagnostics.cap.cim10]  mult
 LLEGIR.diagnostics<-readRDS(directori_dades %>% here::here("DAPCRMM_entregable_diagnostics_20190926_103409.rds")) %>% as_tibble()
@@ -91,11 +89,37 @@ LLEGIR.variables_socioeconomiques<-readRDS(directori_dades %>% here::here("DAPCR
 
 ```
 
+
+```{r, eval=T}
+
+dt_pobl_globdiab<-data.table::fread("dades/globdiab" %>% here::here("GBDIAB_entregable_poblacio_20171017_081430.txt")) %>% as_tibble() 
+
+#ii       [diagnostics.hospital.cim9]  mult
+dt_dg_globdiab<-data.table::fread("dades/globdiab"%>% here::here("GBDIAB_entregable_diagnostics_20171017_081430.txt")) %>% as_tibble()
+
+# dt_poblacio %>% summarise(min(entrada), max(entrada))
+# dt_poblacio %>% summarise(min(dnaix), max(dnaix))
+# LLEGIR.poblacio %>% summarise(min(dnaix), max(dnaix))
+
+# dt_diagnostics %>% filter(agr=="ALTRES DIABETIS") %>% select(cod) %>% distinct()
+# 
+# table(dt_diagnostics$agr)
+
+```
+
+
 ```{r genero_dt_index}
 
-dt_index<-
+dt_index_DH<-
   LLEGIR.poblacio %>% select(idp,entrada,sortida) %>% mutate(kk=1) %>%
   left_join(tibble(dtindex=seq(20100630,20180630,10000),kk=1),by="kk") %>% 
+  filter(entrada<=dtindex & dtindex<=sortida)  %>%  # Filtro per usuari actiu en data index
+  select(-c(kk,entrada,sortida))
+
+
+dt_index_GDiab<-
+  dt_pobl_globdiab %>% select(idp,entrada,sortida) %>% mutate(kk=1) %>%
+  left_join(tibble(dtindex=seq(20060630,20160630,10000),kk=1),by="kk") %>% 
   filter(entrada<=dtindex & dtindex<=sortida)  %>%  # Filtro per usuari actiu en data index
   select(-c(kk,entrada,sortida))
 
@@ -103,53 +127,76 @@ dt_index<-
 ```
 
 
-```{r fusio_agregacio, include=T}
-#vii)
-# [dt_diagnostics==LLEGIR.cmbdh_diagnostics_padris+LLEGIR.diagnostics]
+```{r fusio_agregacio_globalDIAB, include=T}
+# Diagnostics DM1 DM2 i DM de globaldiab 
 
-# data Index, primera data amn DM!!!
+dt_diagnostics1_GD<-dt_dg_globdiab %>% 
+  select(idp,cod,dat) %>% 
+  agregar_problemes(bd.dindex = dt_index_GDiab,
+                    dt.agregadors=select(dt_cataleg,cod,agr="DM"),
+                    finestra.dies=c(-Inf,0),prefix = "DG.")
 
-dt_diagnostics_global<-LLEGIR.cmbdh_diagnostics_padris %>%
-  transmute(idp,cod=as.character(cod),dat,agr) %>%
-  bind_rows(select(LLEGIR.diagnostics,idp,cod,dat,agr))
+dt_diagnostics2_GD<-dt_dg_globdiab %>% 
+  select(idp,cod,dat) %>% 
+  agregar_problemes(bd.dindex = dt_index_GDiab,
+                    dt.agregadors=select(dt_cataleg,cod,agr=AGR),
+                    finestra.dies=c(-Inf,0),prefix = "DG.")
 
-dt_index
 
-dt_diagnostics1<-agregar_problemes(select(dt_diagnostics_global,idp,cod,dat),
-                                           bd.dindex = dt_index,
-                                           dt.agregadors=select(dt_cataleg,cod,agr="DM"),
-                                           finestra.dies=c(-Inf,0),prefix = "DG.") 
+```
 
-dt_diagnostics2<-agregar_problemes(select(dt_diagnostics_global,idp,cod,dat),
-                                           bd.dindex = dt_index,
-                                           dt.agregadors=select(dt_cataleg,cod,agr=AGR),
-                                           finestra.dies=c(-Inf,0),prefix = "DG.") 
 
-#-----------------------------------------------------------------------------------------#
+```{r fusio_agregacio_DH, include=T}
+
+
+dt_diagnostics1_DH<-LLEGIR.diagnostics %>% 
+  select(idp,cod,dat) %>% 
+  agregar_problemes(bd.dindex = dt_index_DH,
+                    dt.agregadors=select(dt_cataleg,cod,agr="DM"),
+                    finestra.dies=c(-Inf,0),prefix = "DG.")
+
+dt_diagnostics2_DH<-LLEGIR.diagnostics %>% 
+  select(idp,cod,dat) %>% 
+  agregar_problemes(bd.dindex = dt_index_DH,
+                    dt.agregadors=select(dt_cataleg,cod,agr=AGR),
+                    finestra.dies=c(-Inf,0),prefix = "DG.")
+
+
+
 ```
 
 
 
 
 
-```{r fusio, include=T}
+```{r fusio_DG, include=T}
 #-----------------------------------------------------------------------------------------#
-
-#
-dt_PREVAL<-dt_index %>% 
-  left_join(LLEGIR.poblacio,by="idp")%>% 
-    left_join(LLEGIR.variables_socioeconomiques,by="idp") %>% 
-      left_join(dt_diagnostics1,by=c("idp","dtindex"))%>%
-        left_join(dt_diagnostics2,by=c("idp","dtindex"))
+dt_PREVAL_GlobalDiab<-
+  dt_index_GDiab %>% 
+  left_join(dt_pobl_globdiab,by="idp")%>% 
+  left_join(dt_diagnostics1_GD,by=c("idp","dtindex"))%>%
+  left_join(dt_diagnostics2_GD,by=c("idp","dtindex"))
        
 
 ```
 
 
+```{r fusio_DH, include=T}
+#-----------------------------------------------------------------------------------------#
+
+#
+dt_PREVAL_DH<-dt_index_DH %>% 
+  left_join(LLEGIR.poblacio,by="idp")%>% 
+    left_join(LLEGIR.variables_socioeconomiques,by="idp") %>% 
+      left_join(dt_diagnostics1_DH,by=c("idp","dtindex"))%>%
+        left_join(dt_diagnostics2_DH,by=c("idp","dtindex"))
+       
+```
+
 ```{r save}
 
-
-saveRDS(dt_PREVAL,file=here::here(params$dir_dades,"dt_PREVAL.Rds"))
+saveRDS(dt_PREVAL_DH,file=here::here(params$dir_dades,"dt_PREVAL_DH.Rds"))
+saveRDS(dt_PREVAL_GlobalDiab,file=here::here(params$dir_dades,"dt_PREVAL_GD.Rds"))
 
 
 ```
