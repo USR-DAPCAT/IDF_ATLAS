@@ -1,0 +1,124 @@
+---
+title: "Incidencia de Diabetes mellitus [DM tipo 2] en Catalunya anual [DM and DM2:2006-2018]"
+author: "Jordi Real"
+website: "https://github.com/USR-DAPCAT/"
+
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+
+
+output:
+  html_document:
+  df_print: paged
+toc: true
+toc_float: true
+fig_caption: true
+css: logos_css/usr_styles.css
+pdf_document: default
+word_document: default
+
+params:
+  dir_dades: "dades/test" # "dades/sidiap"
+
+---
+  
+  &nbsp;
+<script>
+  $(document).ready(function() {
+    $head = $('#header');
+    $head.prepend('<img src=\"https://www.idiapjgol.org/images/logo.png\" style=\"float: right ;width: 130px;\"/>')
+    $head.prepend('<img src=\"https://avatars2.githubusercontent.com/u/57066591?s=200&v=4\" style=\"margin-left:25% ;width: 80px;\"/>')
+    $head.prepend('<img src=\"logos_css/logoDAP_Cat.png\" style=\"float: left:1;width: 185px;\"/>')
+  });
+</script>
+  
+  
+  <div class="watermark">DRAFT</div>
+  
+  ****
+  
+  
+## Objetivos
+
+- Calcular la incidencia Diabetes Mellitus tipo 2 anualmente y por generación <br/>
+
+# FASE LECTURA
+  
+  >> Generacio de taula plana i aplicació de primers criteris d'inclusio 
+
+```{r setup, include = FALSE}
+#rm(list=ls())
+
+library("dplyr")
+library("lubridate")
+library("here")
+library("tidyr")
+# Funcions 
+link_source<-paste0("https://github.com/jrealgatius/Stat_codis/blob/master/funcions_propies.R","?raw=T")
+devtools::source_url(link_source)
+
+directori_dades<-params$dir_dades
+
+# Llegeixo CATALEG
+dt_cataleg<-readxl::read_excel(here::here("cataleg_PrevalDH.xlsx"),col_types = "text")
+
+# Llegeixo CONDUCTOR
+conductor<-"conductor_Prev_DataHarmonization.xlsx"
+
+
+```
+
+
+
+
+```{r lecturaGD, include=T}
+
+## 1. Lectura GH
+
+dt_pobl_globdiab<-data.table::fread(directori_dades %>% here::here("GBDIAB/GBDIAB_entregable_poblacio_20171017_081430.txt")) %>% as_tibble() 
+
+#ii       [diagnostics.hospital.cim9]  mult
+dt_dg_globdiab<-data.table::fread(directori_dades %>% here::here("GBDIAB/GBDIAB_entregable_diagnostics_20171017_081430.txt")) %>% 
+  select(idp,cod,dat,dbaixa,agr) %>% as_tibble()
+
+```
+
+```{r lecturaDH, include=T}
+
+# 1 Lectura -----------
+#i        [poblacio] unic [min entrada 1.1.2006!!!]
+dt_poblacioDH<-readRDS(directori_dades %>% here::here("DH/DAPCRMM_entregable_poblacio_20190926_103409.rds")) %>% as_tibble() 
+
+
+#iii       [diagnostics.cap.cim10]  mult
+dt_diagnosticsDH<-readRDS(directori_dades %>% here::here("DH/DAPCRMM_entregable_diagnostics_20190926_103409.rds")) %>% as_tibble()
+
+
+```
+
+
+```{r}
+
+# Genero dates index
+dt_index_DH<-
+  dt_poblacioDH %>% select(idp,entrada,sortida) %>% mutate(kk=1) %>%
+  left_join(tibble(dtindex=seq(20100630,20180630,10000),kk=1),by="kk") %>% 
+  filter(entrada<=dtindex & dtindex<=sortida)  %>%  # Filtro per usuari actiu en data index
+  select(-c(kk,entrada,sortida))
+
+
+dt_index_GDiab<-
+  dt_pobl_globdiab %>% select(idp,entrada,sortida) %>% mutate(kk=1) %>%
+  left_join(tibble(dtindex=seq(20060630,20160630,10000),kk=1),by="kk") %>% 
+  filter(entrada<=dtindex & dtindex<=sortida)  %>%  # Filtro per usuari actiu en data index
+  select(-c(kk,entrada,sortida))
+
+
+
+```
+
+```{r}
+
+
+```
+
+  

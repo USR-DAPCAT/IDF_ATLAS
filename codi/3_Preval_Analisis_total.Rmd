@@ -11,7 +11,7 @@ output:
   pdf_document: default
 params:
   dir_dades: "dades/sidiap" # "dades/test"
-  year: '2012'
+
 website: https://github.com/USR-DAPCAT/
 ---
 
@@ -60,9 +60,12 @@ Fuente de datos:
 ```{r llegir_dades, include=FALSE}
 # saveRDS(dt_colapsat,"fitxer_colapsat.Rds")
  
-dt_colapsatDH<-readRDS(here::here(params$dir_dades,"fitxer_colapsatDH.Rds"))
 
-dt_colapsatGD<-readRDS(here::here(params$dir_dades,"fitxer_colapsatGD.Rds"))
+dt_colapsatDH<-readRDS(here::here(params$dir_dades,"fitxer_colapsatDH.Rds")) %>% filter(min_edat>=20)
+
+dt_colapsatGD<-readRDS(here::here(params$dir_dades,"fitxer_colapsatGD.Rds")) %>% filter(min_edat>=20)
+
+
 
 # Filtre 
 # dt_colapsat<-dt_colapsat %>% filter(year==params$year)
@@ -89,12 +92,18 @@ dt_cataleg %>% filter(AGR=="DMG") %>% select(cod,desc) %>% knitr::kable(caption=
 
 ```{r rangs_edat, include=TRUE, results="asis", eval=FALSE}
 
-cat("## pepepepepepepe")
 
-dt_colapsat %>% group_by(year) %>% summarise("Age (min)"=min(min_edat), "Age (max)"= max(max_edat)) %>% 
+dt_colapsatDH %>% group_by(year) %>% summarise("Age (min)"=min(min_edat), "Age (max)"= max(max_edat)) %>% 
   knitr::kable(caption="Age range by annual crosssection")
 
+dt_colapsatGD %>% group_by(year) %>% summarise("Age (min)"=min(min_edat), "Age (max)"= max(max_edat)) %>% 
+  knitr::kable(caption="Age range by annual crosssection")
 
+dt_colapsatGD %>% group_by(year) %>% summarise("Age (min)"=min(min_edat), "Age (max)"= max(max_edat)) %>% 
+  knitr::kable(caption="Age range by annual crosssection")
+
+dt_colapsatDH %>% group_by(edat.cat2) %>% summarise("Age (min)"=min(min_edat), "Age (max)"= max(max_edat)) %>% 
+  knitr::kable(caption="Age range by annual crosssection")
 
 ```
 

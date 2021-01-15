@@ -77,7 +77,7 @@ dades<-dades1
 
 dades<-dades %>% mutate(year=stringr::str_sub(dtindex,1,4))
 
-dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),1))
+dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),0))
 
 ## Edat màxima 105 anys
 dades<-dades %>% filter(edat<=105)
@@ -87,9 +87,7 @@ dades<-dades %>% mutate_at(vars( starts_with("DG.") ), funs( if_else(.==0  | is.
 #-----------------------------------------------------------------------------------------#
 
 ## Grups d'edat per cada 5 anys desde 20 fins major de 90
-dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F),
-                        edat=round(edat,1))
-
+dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F))
 
 
 dades<-dades %>% mutate(ruralitat=if_else(ruralitat=="","ND",ruralitat))
@@ -106,7 +104,7 @@ dades<-dades2
 
 dades<-dades %>% mutate(year=stringr::str_sub(dtindex,1,4))
 
-dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),1))
+dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),0))
 
 ## Edat màxima (105 anys)
 dades<-dades %>% filter(edat<=105)
@@ -117,8 +115,7 @@ dades<-dades %>% mutate_at(vars( starts_with("DG.") ), funs( if_else(.==0  | is.
 
 ## Grups d'edat per cada 5 anys desde 20 fins major de 90
 
-dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F),
-                        edat=round(edat,1))
+dades<-dades %>% mutate(edat.cat2=cut2(edat,seq(20,90,5),right = F))
 
 dades<-dades %>% etiquetar_valors(variables_factors = conductor,fulla = "etiquetes")
 
