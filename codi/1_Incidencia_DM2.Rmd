@@ -1,24 +1,20 @@
 ---
-title: "Incidencia de Diabetes mellitus [DM tipo 2] en Catalunya anual [DM and DM2:2006-2018]"
-author: "Jordi Real"
-website: "https://github.com/USR-DAPCAT/"
-
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-
-
-output:
-  html_document:
-  df_print: paged
-toc: true
-toc_float: true
-fig_caption: true
-css: logos_css/usr_styles.css
 pdf_document: default
+author: "Jordi Real"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: null
+  df_print: paged
+  pdf_document: default
+website: https://github.com/USR-DAPCAT/
+toc: yes
+toc_float: yes
+fig_caption: yes
+css: logos_css/usr_styles.css
+title: "Incidencia de Diabetes mellitus [DM tipo 2] en Catalunya anual [DM and DM2:2006-2018]"
 word_document: default
-
 params:
-  dir_dades: "dades/test" # "dades/sidiap"
-
+  dir_dades: dades/sidiap  #dades/test # dades/sidiap
 ---
   
   &nbsp;
@@ -71,18 +67,18 @@ conductor<-"conductor_Prev_DataHarmonization.xlsx"
 
 
 ```{r lecturaGD, include=T}
-
 ## 1. Lectura GH
-
 dt_pobl_globdiab<-data.table::fread(directori_dades %>% here::here("GBDIAB/GBDIAB_entregable_poblacio_20171017_081430.txt")) %>% as_tibble() 
 
 #ii       [diagnostics.hospital.cim9]  mult
 dt_dg_globdiab<-data.table::fread(directori_dades %>% here::here("GBDIAB/GBDIAB_entregable_diagnostics_20171017_081430.txt")) %>% 
   select(idp,cod,dat,dbaixa,agr) %>% as_tibble()
 
+
+
 ```
 
-```{r lecturaDH, include=T}
+```{r lecturaDH, include=T, eval=FALSE}
 
 # 1 Lectura -----------
 #i        [poblacio] unic [min entrada 1.1.2006!!!]
@@ -96,7 +92,7 @@ dt_diagnosticsDH<-readRDS(directori_dades %>% here::here("DH/DAPCRMM_entregable_
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 
 # Genero dates index
 dt_index_DH<-
@@ -105,6 +101,11 @@ dt_index_DH<-
   filter(entrada<=dtindex & dtindex<=sortida)  %>%  # Filtro per usuari actiu en data index
   select(-c(kk,entrada,sortida))
 
+```
+
+
+
+```{r}
 
 dt_index_GDiab<-
   dt_pobl_globdiab %>% select(idp,entrada,sortida) %>% mutate(kk=1) %>%
@@ -116,9 +117,43 @@ dt_index_GDiab<-
 
 ```
 
-```{r}
 
+```{r agregacioDG}
+# Agregar diagnostics prevalents
+dtagr_dg<-
+  dt_dg_globdiab %>% 
+  select(idp,cod,dat) %>% 
+  agregar_problemes(bd.dindex = dt_index_GDiab,
+                    dt.agregadors=select(dt_cataleg,cod,agr="AGR"),
+                    finestra.dies=c(-Inf,0),prefix = "DG.")
+
+# Agregar Events incidents
+dtagr_ev<-
+  dt_dg_globdiab %>% 
+  select(idp,cod,dat) %>% 
+  agregar_problemes(bd.dindex = dt_index_GDiab,
+                    dt.agregadors=select(dt_cataleg,cod,agr="AGR"),
+                    finestra.dies=c(+1,+Inf),prefix = "EV.")
+```
+
+
+```{r fusionar}
+
+# Fusionar
+dades<-
+  dt_pobl_globdiab %>% 
+  left_join(dt_index_GDiab,by="idp") %>% 
+  left_join(dtagr_dg,by=c("idp","dtindex")) %>% 
+  left_join(dtagr_ev,by=c("idp","dtindex"))
+
+
+gc()
 
 ```
 
-  
+
+```{r salvar}
+
+saveRDS(dades,here::here(directori_dades,"dades_incidencia.Rds"))
+
+```

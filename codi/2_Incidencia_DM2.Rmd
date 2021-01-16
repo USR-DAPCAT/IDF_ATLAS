@@ -1,0 +1,116 @@
+---
+author: "Jordi Real"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document: null
+  df_print: paged
+  pdf_document: default
+website: https://github.com/USR-DAPCAT/
+toc: yes
+toc_float: yes
+fig_caption: yes
+css: logos_css/usr_styles.css
+title: "Incidencia de Diabetes mellitus [DM tipo 2] en Catalunya anual. Seguiment fins 2016"
+word_document: default
+params:
+  dir_dades: dades/test  #dades/test # dades/sidiap
+---
+  
+  &nbsp;
+<script>
+  $(document).ready(function() {
+    $head = $('#header');
+    $head.prepend('<img src=\"https://www.idiapjgol.org/images/logo.png\" style=\"float: right ;width: 130px;\"/>')
+    $head.prepend('<img src=\"https://avatars2.githubusercontent.com/u/57066591?s=200&v=4\" style=\"margin-left:25% ;width: 80px;\"/>')
+    $head.prepend('<img src=\"logos_css/logoDAP_Cat.png\" style=\"float: left:1;width: 185px;\"/>')
+  });
+</script>
+  
+  
+  <div class="watermark">DRAFT</div>
+  
+****
+
+  
+## Objetivos
+- Estimació de la incidència Diabetes Mellitus tipo 2 amb la base dades SIDIAP <br/>
+
+
+```{r setup, include = FALSE}
+#rm(list=ls())
+
+library("dplyr")
+library("lubridate")
+library("here")
+library("tidyr")
+# Funcions 
+# link_source<-paste0("https://github.com/jrealgatius/Stat_codis/blob/master/funcions_propies.R","?raw=T")
+# devtools::source_url(link_source)
+
+directori_dades<-params$dir_dades
+
+# # Llegeixo CATALEG
+# dt_cataleg<-readxl::read_excel(here::here("cataleg_PrevalDH.xlsx"),col_types = "text")
+
+# Llegeixo CONDUCTOR
+# conductor<-"conductor_Prev_DataHarmonization.xlsx"
+
+
+```
+
+
+```{r lectura, include=FALSE}
+
+dades<-readRDS(here::here(directori_dades,"dades_incidencia.Rds"))
+
+# Filtro per any year>2010
+dades <- dades %>% filter (dtindex>20100101) # Selecciono Cohorts a partir de 2010,2011,2012.... amb seguiment fins 
+
+
+```
+
+
+```{r calculs, include=FALSE}
+
+gc()
+
+
+# Caculs i Recodes 
+dades<-dades %>% mutate(year=stringr::str_sub(dtindex,1,4))
+
+dades <- dades %>% mutate(edat=round(as.numeric((ymd(dtindex)-ymd(dnaix))/365.25),0))
+
+# Temps lliure d'event DM2
+dades <- dades %>% mutate(data_event=if_else(EV.DM2>0,EV.DM2,sortida,missing = sortida),
+                          temps_lliure_DM2=as.numeric((ymd(data_event)-ymd(dtindex))/365.25))
+
+dades<-dades %>% mutate_at(vars(starts_with(c("DG.","EV."))), funs( if_else(.==0  | is.na(.)  ,0,1)))
+
+# Filtres (lliures de prevalença)
+dades<-dades %>% filter(DG.DM2==0)
+
+## Edat màxima 105 anys edat minima 18 
+dades<-dades %>% 
+  filter(edat<=105 & edat>18) 
+
+gc()
+
+```
+
+## Dades d'incidència de DM2 registrada per cohort
+
+```{r resulats, include=TRUE, echo=FALSE, message=FALSE}
+
+dades %>% summarise(temps_risc=sum(temps_lliure_DM2), events=sum(EV.DM2),Rate_year_1000=round((events/temps_risc)*1000,3)) %>% 
+  knitr::kable(caption = "Incidencia global", digits = 2) 
+
+
+dades %>% group_by(year) %>% 
+  summarise(Població =n(),temps_risc=sum(temps_lliure_DM2), events=sum(EV.DM2),Rate_year_1000=round((events/temps_risc)*1000,3)) %>% 
+  knitr::kable(caption = "Incidencia per any", digits = 2) 
+
+
+
+```
+
+  
